@@ -1,0 +1,21 @@
+{
+  "name": "telegram-botbuilder",
+  "version": "1.6.6",
+  "main": "lib/index.js",
+  "keywords": [],
+  "author": "zxcpadik",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@types/node-telegram-bot-api": "^0.64.7",
+    "@types/object-hash": "^3.0.6",
+    "node-telegram-bot-api": "^0.66.0",
+    "object-hash": "^3.0.0",
+    "rfdc": "^1.4.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.3"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
