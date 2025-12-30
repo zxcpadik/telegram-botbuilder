@@ -1,377 +1,403 @@
 # telegram-botbuilder
 
-A modern, type-safe Telegram bot framework for Node.js with an intuitive dialog-based architecture.
+> 🤖 Declarative dialog-based Telegram bot framework for Node.js
 
-## Installation
+[![npm version](https://img.shields.io/npm/v/telegram-botbuilder.svg)](https://www.npmjs.com/package/telegram-botbuilder)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node.js Version](https://img.shields.io/node/v/telegram-botbuilder.svg)](https://nodejs.org)
+
+Build Telegram bots with a simple, declarative dialog-based approach. Define your bot's conversation flow as a schema of dialogs and let the framework handle the rest.
+
+## ✨ Features
+
+- 📝 **Declarative Schema** - Define dialogs, buttons, and commands in a clear structure
+- 🔀 **Dialog Navigation** - Seamless transitions between conversation states
+- ⌨️ **Dual Keyboard Support** - Both inline and reply keyboards
+- 🔗 **Action Chaining** - Compose complex behaviors from simple actions
+- 🛡️ **Type-Safe** - Full TypeScript support with strict types
+- 🔌 **Middleware System** - Extend functionality with custom middleware
+- ✅ **Schema Validation** - Catch configuration errors early with Zod validation
+- 📊 **Configurable Logging** - Built-in logger with custom logger support
+- 🎯 **Input Handling** - Wait for text, files, photos with validation and timeouts
+
+## 📦 Installation
 
 ```bash
 npm install telegram-botbuilder
 ```
 
-## Quick Start
-
-### Modern API (Recommended)
+## 🚀 Quick Start
 
 ```typescript
-import { BotBuilder, ModernSchema, createDialog, createAction, bold } from 'telegram-botbuilder';
+import { BotBuilder, go_to, notify, type Schema } from "telegram-botbuilder";
 
-const schema: ModernSchema = {
-  startDialog: 'welcome',
+const schema: Schema = {
+  start_dialog: "welcome",
+  
   dialogs: [
-    createDialog({
-      id: 'welcome',
-      text: `${bold('Welcome!')} Choose an option:`,
-      buttons: [
+    {
+      id: "welcome",
+      text: "👋 Welcome! Choose an option:",
+      inline_buttons: [
         [
-          {
-            text: 'Show Profile',
-            action: createAction(async (context) => {
-              await context.bot.sendMessage(context.chatId, 'Here is your profile!');
-            })
-          },
-          {
-            text: 'Settings',
-            action: createAction(async (context) => {
-              await context.bot.navigateToDialog(context.chatId, 'settings');
-            })
-          }
-        ]
-      ]
-    }),
-    createDialog({
-      id: 'settings',
-      text: 'Settings menu:',
-      buttons: [
+          { text: "📖 About", action: go_to("about") },
+          { text: "⚙️ Settings", action: go_to("settings") },
+        ],
         [
-          {
-            text: '← Back',
-            action: createAction(async (context) => {
-              await context.bot.navigateToDialog(context.chatId, 'welcome');
-            })
-          }
-        ]
-      ]
-    })
-  ]
+          { text: "❓ Help", action: notify("This is a help message!") },
+        ],
+      ],
+    },
+    {
+      id: "about",
+      text: "ℹ️ This is a demo bot built with telegram-botbuilder.",
+      inline_buttons: [
+        [{ text: "⬅️ Back", action: go_to("welcome") }],
+      ],
+    },
+    {
+      id: "settings",
+      text: "⚙️ Settings menu",
+      inline_buttons: [
+        [{ text: "⬅️ Back", action: go_to("welcome") }],
+      ],
+    },
+  ],
+  
+  commands: [
+    { name: "help", action: notify("Use /start to begin!") },
+  ],
 };
 
-const bot = new BotBuilder(schema, 'YOUR_BOT_TOKEN', { polling: true });
-```
-
-## Core Concepts
-
-### Dialogs
-
-Dialogs are the building blocks of your bot's conversation flow. Each dialog has an ID, text content, and optional buttons.
-
-```typescript
-createDialog({
-  id: 'my_dialog',
-  text: 'Hello! What would you like to do?',
-  buttons: [
-    [
-      { text: 'Option 1', action: myAction },
-      { text: 'Option 2', action: anotherAction }
-    ]
-  ],
-  images: 'https://example.com/image.jpg' // Optional
-})
-```
-
-### Actions
-
-Actions are functions that execute when buttons are pressed or other events occur.
-
-```typescript
-const myAction = createAction(async (context) => {
-  const { chatId, bot, user } = context;
-  
-  // Send a message
-  await bot.sendMessage(chatId, 'Action executed!');
-  
-  // Navigate to another dialog
-  await bot.navigateToDialog(chatId, 'another_dialog');
-  
-  // Store user data
-  bot.setUserData(chatId, { lastAction: 'my_action' });
+const bot = new BotBuilder(schema, {
+  token: process.env.BOT_TOKEN!,
+  telegram_options: { polling: true },
 });
+
+console.log("Bot is running...");
 ```
 
-### Context
+## 📚 Core Concepts
 
-All modern handlers receive a context object with useful information:
+### Schema
+
+The schema defines your entire bot structure:
 
 ```typescript
-interface ActionContext {
-  chatId: number;
-  bot: BotBuilder;
-  user: any; // User data stored with setUserData
+interface Schema {
+  start_dialog: string;           // Initial dialog ID
+  dialogs: Dialog[];              // All dialogs
+  commands?: Command[];           // Bot commands
+  error_dialog?: string;          // Shown on errors
+  fallback_action?: Action;       // Unmatched messages
 }
 ```
 
-## Advanced Features
+### Dialogs
 
-### User Input Handling
-
-Wait for user input with type-safe handlers:
+Dialogs are conversation states with text and buttons:
 
 ```typescript
-const askNameAction = createAction(async (context) => {
-  await context.bot.sendMessage(context.chatId, 'What is your name?');
-  
-  await context.bot.waitForInput(context.chatId, async (inputContext) => {
-    const name = inputContext.data;
-    context.bot.setUserData(context.chatId, { name });
-    await context.bot.sendMessage(context.chatId, `Hello, ${name}!`);
-  });
-});
-```
-
-### List Management
-
-Display paginated lists with built-in navigation:
-
-```typescript
-const items = [
-  { id: 1, str: () => '📄 Document 1', obj: { type: 'doc' } },
-  { id: 2, str: () => '📄 Document 2', obj: { type: 'doc' } },
-  { id: 3, str: () => '📄 Document 3', obj: { type: 'doc' } }
-];
-
-const showListAction = createAction(async (context) => {
-  await context.bot.showList(context.chatId, items, {
-    title: 'Select a document:',
-    onSelect: async (item, page) => {
-      await context.bot.sendMessage(context.chatId, `Selected: ${await item.str()}`);
-    },
-    onExit: async () => {
-      await context.bot.navigateToDialog(context.chatId, 'welcome');
-    },
-    pageSize: 5
-  });
-});
-```
-
-### Commands
-
-Register bot commands with modern handlers:
-
-```typescript
-const schema: ModernSchema = {
-  startDialog: 'welcome',
-  dialogs: [...],
-  commands: [
-    {
-      command: 'help',
-      description: 'Show help information',
-      handler: async (context) => {
-        await context.bot.sendMessage(context.chatId, 'Help information here...');
-      }
-    }
-  ]
-};
+interface Dialog {
+  id: string;                     // Unique identifier
+  text?: TextSource;              // Message text (string or function)
+  inline_buttons?: ButtonSource;  // Inline keyboard
+  reply_buttons?: ButtonSource;   // Reply keyboard
+  images?: ImageSource;           // Photos to display
+  on_enter?: DialogAction;        // Called when entering
+  on_leave?: DialogAction;        // Called when leaving
+}
 ```
 
 ### Dynamic Content
 
-Use functions for dynamic text and buttons:
+Text, buttons, and images can be static or dynamic:
 
 ```typescript
-createDialog({
-  id: 'dynamic',
-  text: async (context) => {
-    const userData = context.bot.getUserData(context.chatId);
-    return `Hello, ${userData.name || 'Guest'}!`;
-  },
-  buttons: async (context) => {
-    const isAdmin = context.bot.getUserData(context.chatId).isAdmin;
-    
-    const buttons = [
-      [{ text: 'Profile', action: profileAction }]
-    ];
-    
-    if (isAdmin) {
-      buttons.push([{ text: 'Admin Panel', action: adminAction }]);
-    }
-    
-    return buttons;
-  }
-})
+// Static
+text: "Hello, world!"
+
+// Dynamic (sync)
+text: (chat_id) => `Hello, user ${chat_id}!`
+
+// Dynamic (async)
+text: async (chat_id) => {
+  const user = await db.getUser(chat_id);
+  return `Hello, ${user.name}!`;
+}
 ```
 
-### Images and Media
+### Buttons
 
-Add images to your dialogs:
+#### Inline Buttons (under messages)
 
 ```typescript
-createDialog({
-  id: 'gallery',
-  text: 'Check out these images:',
-  images: [
-    'https://example.com/image1.jpg',
-    'https://example.com/image2.jpg'
+inline_buttons: [
+  [
+    { text: "Click me", action: go_to("other_dialog") },
+    { text: "Open link", url: "https://example.com" },
   ],
-  buttons: [[{ text: 'Next', action: nextAction }]]
-})
+  [
+    { text: "Web App", web_app: "https://webapp.example.com" },
+  ],
+]
 ```
 
-## Text Formatting
-
-Use built-in formatting utilities:
+#### Reply Buttons (main keyboard)
 
 ```typescript
-import { bold, italic, underline, link, code, md2html } from 'telegram-botbuilder';
-
-const formattedText = `
-${bold('Important:')} This is ${italic('very')} important!
-${link('Click here', 'https://example.com')}
-${code('console.log("Hello World!")')}
-`;
-
-// Convert markdown to HTML
-const htmlText = md2html('**Bold** and *italic* text');
+reply_buttons: [
+  [
+    { text: "📞 Share Contact", request_contact: true },
+    { text: "📍 Share Location", request_location: true },
+  ],
+  [
+    { text: "Option A", action: go_to("option_a") },
+    { text: "Option B", action: go_to("option_b") },
+  ],
+],
+reply_keyboard_options: {
+  resize_keyboard: true,
+  one_time_keyboard: false,
+}
 ```
 
-## User Data Management
+## 🎬 Actions
 
-Store and retrieve user-specific data:
+Actions are functions that execute when buttons are clicked or commands are received.
+
+### Navigation
 
 ```typescript
-// Store data
-bot.setUserData(chatId, { 
-  name: 'John',
-  preferences: { theme: 'dark' }
+import { go_to, go_to_start } from "telegram-botbuilder";
+
+// Navigate to specific dialog
+go_to("dialog_id")
+
+// Reset to start dialog
+go_to_start()
+```
+
+### Messaging
+
+```typescript
+import { notify, notify_dynamic } from "telegram-botbuilder";
+
+// Send static message
+notify("Hello!")
+
+// Auto-delete after 5 seconds
+notify("Temporary message", { auto_delete_ms: 5000 })
+
+// Dynamic message
+notify_dynamic((chat_id) => `Your ID: ${chat_id}`)
+```
+
+### Event Emission
+
+```typescript
+import { emit, call } from "telegram-botbuilder";
+
+// Emit event
+emit("button_clicked", "extra_data")
+
+// Listen for event
+bot.events.on("button_clicked", (chat_id, data) => {
+  console.log(`User ${chat_id} clicked, data: ${data}`);
 });
 
-// Retrieve data
-const userData = bot.getUserData(chatId);
-console.log(userData.name); // 'John'
-
-// Update data (merges with existing)
-bot.setUserData(chatId, { lastSeen: new Date() });
+// Call function directly
+call(async (chat_id, ...args) => {
+  await someAsyncOperation(chat_id);
+}, arg1, arg2)
 ```
 
-## Error Handling
-
-Add global error handling:
+### Input Waiting
 
 ```typescript
-const schema: ModernSchema = {
-  startDialog: 'welcome',
-  dialogs: [...],
-  errorHandler: async (error, context) => {
-    console.error('Bot error:', error);
-    await context.bot.sendMessage(context.chatId, 'Sorry, something went wrong!');
+import { wait_for_text, wait_for_file, wait_for_photo } from "telegram-botbuilder";
+
+// Wait for text input
+wait_for_text(async (chat_id, text) => {
+  console.log(`User ${chat_id} entered: ${text}`);
+}, {
+  timeout: 60000,              // 1 minute timeout
+  validator: (input) => {      // Validation
+    if (input.length < 3) return "Too short!";
+    return true;
+  },
+  cancel_keywords: ["/cancel", "cancel"],
+})
+
+// Wait for file
+wait_for_file("file_received", {
+  input_types: ["document", "photo"],
+})
+
+// Wait for photo specifically
+wait_for_photo((chat_id, result) => {
+  console.log(`Photo file_id: ${result.file_id}`);
+})
+```
+
+### Control Flow
+
+```typescript
+import { sequence, when, delay, when_data, set_data } from "telegram-botbuilder";
+
+// Execute multiple actions
+sequence(
+  notify("Step 1"),
+  delay(1000, notify("Step 2")),
+  go_to("next_dialog")
+)
+
+// Conditional execution
+when(
+  (ctx) => ctx.bot.get_user_data(ctx.chat_id, "is_admin"),
+  go_to("admin_panel"),
+  notify("Access denied")
+)
+
+// Check user data
+when_data<boolean>("premium", 
+  (value) => value === true,
+  go_to("premium_features"),
+  notify("Upgrade to premium!")
+)
+
+// Set/modify user data
+set_data("counter", (chat_id) => {
+  const current = bot.get_user_data<number>(chat_id, "counter") ?? 0;
+  return current + 1;
+})
+```
+
+## 🔌 Middleware
+
+Add custom logic to process all updates:
+
+```typescript
+// Logging middleware
+bot.use(async (ctx, next) => {
+  console.log(`[${ctx.update_type}] User ${ctx.chat_id}`);
+  await next(); // Continue to next middleware/handler
+});
+
+// Auth middleware
+bot.use(async (ctx, next) => {
+  const allowed = await checkUserAllowed(ctx.user_id);
+  if (!allowed) {
+    await ctx.bot.send_message(ctx.chat_id, "Access denied");
+    return; // Don't call next() - stops processing
   }
-};
+  await next();
+});
+
+// Rate limiting
+const requests = new Map<number, number>();
+bot.use(async (ctx, next) => {
+  const count = requests.get(ctx.chat_id) ?? 0;
+  if (count > 10) {
+    await ctx.bot.send_message(ctx.chat_id, "Too many requests!");
+    return;
+  }
+  requests.set(ctx.chat_id, count + 1);
+  setTimeout(() => requests.delete(ctx.chat_id), 60000);
+  await next();
+});
 ```
 
-## Migration from Legacy API
-
-The package maintains full backward compatibility. Existing bots using the legacy API will continue to work without changes.
-
-### Legacy API (Deprecated)
+## 🎛️ Configuration
 
 ```typescript
-// Old way (still works)
-import { Schema, BotBuilder, ChangeDialog, CallbackAction } from 'telegram-botbuilder';
-
-const schema: Schema = {
-  start: 'start_dialog',
-  content: [
-    {
-      id: 'start_dialog',
-      text: 'Welcome!',
-      buttons: [
-        [{
-          text: 'Button',
-          action: [ChangeDialog('other_dialog')]
-        }]
-      ]
-    }
-  ]
-};
+const bot = new BotBuilder(schema, {
+  token: "YOUR_BOT_TOKEN",
+  
+  // Telegram API options
+  telegram_options: {
+    polling: true,
+    // or webhook configuration
+  },
+  
+  // Enable /start command (default: true)
+  enable_start_command: true,
+  
+  // Parse mode for messages (default: "HTML")
+  default_parse_mode: "HTML",
+  
+  // Schema validation (default: true)
+  validate_schema: true,
+  
+  // Auto-delete user messages (default: true)
+  auto_delete_user_messages: true,
+  
+  // Default input timeout (default: 5 minutes)
+  default_input_timeout: 300000,
+  
+  // Logging
+  logger: {
+    level: "info", // "debug" | "info" | "warn" | "error" | "silent"
+    
+    // Custom logger (optional)
+    custom_logger: {
+      debug: (msg, ...args) => myLogger.debug(msg, ...args),
+      info: (msg, ...args) => myLogger.info(msg, ...args),
+      warn: (msg, ...args) => myLogger.warn(msg, ...args),
+      error: (msg, ...args) => myLogger.error(msg, ...args),
+    },
+  },
+});
 ```
 
-### Modern API (Recommended)
+## 📖 API Reference
+
+### BotBuilder
 
 ```typescript
-// New way
-import { ModernSchema, BotBuilder, createDialog, createAction } from 'telegram-botbuilder';
-
-const schema: ModernSchema = {
-  startDialog: 'start_dialog',
-  dialogs: [
-    createDialog({
-      id: 'start_dialog',
-      text: 'Welcome!',
-      buttons: [
-        [{
-          text: 'Button',
-          action: createAction(async (context) => {
-            await context.bot.navigateToDialog(context.chatId, 'other_dialog');
-          })
-        }]
-      ]
-    })
-  ]
-};
+class BotBuilder {
+  // Properties
+  telegram: TelegramBot;           // Raw telegram bot instance
+  events: EventEmitter;            // Event emitter
+  
+  // Methods
+  use(middleware: Middleware): this;
+  change_dialog(chat_id: number, dialog_id: string): Promise<void>;
+  send_message(chat_id: number, text: string, options?): Promise<Message>;
+  get_user_state(chat_id: number): UserState;
+  set_user_data(chat_id: number, key: string, value: unknown): void;
+  get_user_data<T>(chat_id: number, key: string): T | undefined;
+  reset_user(chat_id: number): Promise<void>;
+  delete_message(chat_id: number, message_id: number): Promise<boolean>;
+  get_dialog(dialog_id: string): Dialog | undefined;
+  wait_for_text(chat_id: number, options?): Promise<WaitResult<string>>;
+  wait_for_file(chat_id: number, options?): Promise<FileWaitResult>;
+  stop(): Promise<void>;
+}
 ```
 
-## API Reference
+### Types
 
-### BotBuilder Class
+See [types documentation](./docs/types.md) for complete type definitions.
 
-#### Modern Methods
-- `navigateToDialog(chatId, dialogId, data?)` - Navigate to a dialog with optional data
-- `sendMessage(chatId, text, options?)` - Send a message with optional formatting and buttons
-- `waitForInput(chatId, handler)` - Wait for user input
-- `showList(chatId, items, options)` - Display a paginated list
-- `setUserData(chatId, data)` - Store user data
-- `getUserData(chatId)` - Retrieve user data
+## 🔄 Migration from v1.x
 
-#### Legacy Methods (Deprecated)
-- `ChangeDialog(chatId, dialogId)` - Navigate to a dialog
-- `Message(chatId, text)` - Send a simple message
-- `use(middleware)` - Add middleware
+See [MIGRATION.md](./MIGRATION.md) for detailed migration guide.
 
-### Helper Functions
+### Quick Changes
 
-#### Modern
-- `createDialog(config)` - Create a dialog configuration
-- `createAction(handler)` - Create an action handler
-- `createCommand(command, handler, description?)` - Create a command
+| v1.x | v2.0 |
+|------|------|
+| `new BotBuilder(schema, token, options)` | `new BotBuilder(schema, { token, ...options })` |
+| `schema.start` | `schema.start_dialog` |
+| `schema.content` | `schema.dialogs` |
+| `dialog.buttons` | `dialog.inline_buttons` |
+| `ChangeDialog(id)` | `go_to(id)` |
+| `CallbackAction(desc)` | `emit(desc)` |
+| `WaitForData(desc)` | `wait_for_text(handler)` |
+| `_bot` | `telegram` |
+| `ActionSystem` | `events` |
 
-#### Text Formatting
-- `bold(text)`, `italic(text)`, `underline(text)` - Format text
-- `link(text, url)` - Create a link
-- `code(text)`, `pre(text)` - Format code
-- `md2html(markdown)` - Convert markdown to HTML
-- `formatHTML(text, entities)` - Format text with Telegram entities
+## 📄 License
 
-#### Legacy (Deprecated)
-- `ChangeDialog(dialogId)` - Create a dialog change action
-- `CallbackAction(descriptor, ...args)` - Create a callback action
-- `WaitForData(descriptor)` - Wait for user data
-
-## TypeScript Support
-
-The package is written in TypeScript and provides full type safety:
-
-```typescript
-import { ModernSchema, ActionContext, ModernDialog } from 'telegram-botbuilder';
-
-// All types are exported and can be used for custom implementations
-const myHandler = async (context: ActionContext) => {
-  // Full IntelliSense support
-  await context.bot.sendMessage(context.chatId, 'Typed!');
-};
-```
-
-## License
-
-MIT
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+MIT © [zxcpadik](https://github.com/zxcpadik)
