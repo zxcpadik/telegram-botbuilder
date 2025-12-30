@@ -254,56 +254,68 @@ export class BotBuilder {
   // ==================== PRIVATE METHODS ====================
 
   /**
-   * Set up all message handlers
-   */
+ * Set up all message handlers
+ */
   private setup_handlers(): void {
-    // Handle /start command
-    if (this.config.enable_start_command) {
-      this.telegram.onText(/^\/start(?:\s+(.*))?$/, async (msg, match) => {
-        await this.handle_start(msg, match?.[1]);
-      });
-    }
-
-    // Handle other commands
-    this.telegram.onText(/^\/(\w+)(?:\s+(.*))?$/, async (msg, match) => {
-      if (match?.[1] === "start" && this.config.enable_start_command) {
-        return; // Handled above
-      }
-      await this.handle_command(msg, match?.[1] ?? "", match?.[2]);
-    });
-
-    // Handle callback queries (inline button clicks)
+    // IMPORTANT: Register callback_query handler FIRST
     this.telegram.on("callback_query", async (query) => {
+      this.logger.debug(`Callback query received: ${query.data}`);
       await this.handle_callback(query);
-    });
-
-    // Handle regular messages
-    this.telegram.on("message", async (msg) => {
-      // Skip commands
-      if (msg.text?.startsWith("/")) return;
-
-      await this.handle_message(msg);
     });
 
     // Handle documents
     this.telegram.on("document", async (msg) => {
+      this.logger.debug(`Document received from ${msg.chat.id}`);
       await this.handle_document(msg);
     });
 
     // Handle photos
     this.telegram.on("photo", async (msg) => {
+      this.logger.debug(`Photo received from ${msg.chat.id}`);
       await this.handle_photo(msg);
     });
 
     // Handle contact
     this.telegram.on("contact", async (msg) => {
+      this.logger.debug(`Contact received from ${msg.chat.id}`);
       await this.handle_contact(msg);
     });
 
     // Handle location
     this.telegram.on("location", async (msg) => {
+      this.logger.debug(`Location received from ${msg.chat.id}`);
       await this.handle_location(msg);
     });
+
+    // Handle /start command
+    if (this.config.enable_start_command) {
+      this.telegram.onText(/^\/start(?:\s+(.*))?$/, async (msg, match) => {
+        this.logger.debug(`/start command from ${msg.chat.id}`);
+        await this.handle_start(msg, match?.[1]);
+      });
+    }
+
+    // Handle all other commands
+    this.telegram.onText(/^\/([a-zA-Z0-9_]+)(?:\s+(.*))?$/, async (msg, match) => {
+      const cmd = match?.[1]?.toLowerCase();
+      if (cmd === "start" && this.config.enable_start_command) {
+        return; // Already handled above
+      }
+      this.logger.debug(`Command /${cmd} from ${msg.chat.id}`);
+      await this.handle_command(msg, cmd ?? "", match?.[2]);
+    });
+
+    // Handle regular text messages (NOT commands)
+    this.telegram.on("text", async (msg) => {
+      // Skip if it's a command
+      if (msg.text?.startsWith("/")) {
+        return;
+      }
+      this.logger.debug(`Text message from ${msg.chat.id}: ${msg.text?.substring(0, 50)}`);
+      await this.handle_message(msg);
+    });
+
+    this.logger.info("All handlers registered");
   }
 
   /**
@@ -657,7 +669,7 @@ export class BotBuilder {
       context.callback_query = update;
     }
 
-    return this.middleware_chain.execute(context, async () => {});
+    return this.middleware_chain.execute(context, async () => { });
   }
 
   /**
