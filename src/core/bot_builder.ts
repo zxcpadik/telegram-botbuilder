@@ -6,7 +6,7 @@ import type { BotConfig, LoggerConfig } from "../types/config.js";
 import type { Action, ActionContext, WaitForInputOptions, WaitResult, FileWaitResult } from "../types/action.js";
 import type { Dialog, InlineButton, ReplyButton } from "../types/dialog.js";
 import type { Middleware, MiddlewareContext, UpdateType } from "../types/middleware.js";
-import type { UserState, InternalSchema } from "../types/internal.js";
+import type { UserState, InternalSchema, InternalDialog } from "../types/internal.js";
 
 import { DEFAULT_CONFIG } from "../types/config.js";
 import { Logger } from "../utils/logger.js";
@@ -88,12 +88,31 @@ export class BotBuilder {
 
   /**
    * Navigate user to a specific dialog
+   * @param chat_id - Chat ID
+   * @param dialog_or_id - Dialog ID string or Dialog object for dynamic dialogs
    */
-  async change_dialog(chat_id: number, dialog_id: string): Promise<void> {
-    const dialog = this.schema.dialogs.get(dialog_id);
+  async change_dialog(chat_id: number, dialog_or_id: string | Dialog): Promise<void> {
+    let dialog: Dialog | undefined;
+    let dialog_id: string;
 
-    if (!dialog) {
-      throw new DialogNotFoundError(dialog_id, chat_id);
+    // Handle both string ID and Dialog object
+    if (typeof dialog_or_id === "string") {
+      dialog_id = dialog_or_id;
+      dialog = this.schema.dialogs.get(dialog_id);
+
+      if (!dialog) {
+        throw new DialogNotFoundError(dialog_id, chat_id);
+      }
+    } else {
+      // Dynamic dialog passed directly
+      dialog = dialog_or_id;
+      dialog_id = dialog.id;
+
+      // Optionally register dynamic dialog for button callbacks
+      if (!this.schema.dialogs.has(dialog_id)) {
+        this.logger.debug(`Registering dynamic dialog: ${dialog_id}`);
+        this.schema.dialogs.set(dialog_id, dialog as InternalDialog);
+      }
     }
 
     const state = this.dialog_manager.get_state(chat_id);

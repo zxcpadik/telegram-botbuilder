@@ -1,6 +1,6 @@
 {
   "name": "telegram-botbuilder",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Declarative dialog-based Telegram bot framework for Node.js",
   "type": "module",
   "main": "./lib/index.js",
@@ -8,7 +8,9 @@
   "exports": {
     ".": {
       "types": "./lib/index.d.ts",
-      "import": "./lib/index.js"
+      "require": "./lib/index.js",
+      "import": "./lib/index.js",
+      "default": "./lib/index.js"
     }
   },
   "files": [
